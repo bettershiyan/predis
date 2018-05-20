@@ -382,15 +382,28 @@ class StreamConnection extends AbstractConnection
         $arguments = $command->getArguments();
 
         $cmdlen = strlen($commandID);
-        $reqlen = count($arguments) + 1;
+        //改成支持命令中包含数组的情况，类似phpredis的调用方式
+        //$reqlen = count($arguments) + 1;
 
-        $buffer = "*{$reqlen}\r\n\${$cmdlen}\r\n{$commandID}\r\n";
+        //$buffer = "*{$reqlen}\r\n\${$cmdlen}\r\n{$commandID}\r\n";
+        $reqlen = 1;
+        $buffer = '';
 
         foreach ($arguments as $argument) {
+            if(is_array($argument)) {
+                foreach($argument as $key => $value) {
+                    $reqlen += 2;
+                    $keyLen = strlen($key);
+                    $valueLen = strlen($value);
+                    $buffer .= "\${$keyLen}\r\n{$key}\r\n";
+                    $buffer .= "\${$valueLen}\r\n{$value}\r\n";
+                }
+            }
             $arglen = strlen($argument);
             $buffer .= "\${$arglen}\r\n{$argument}\r\n";
         }
+        $buffer = "*{$reqlen}\r\n\${$cmdlen}\r\n{$commandID}\r\n" . $buffer;
 
-        $this->write($buffer);
+         $this->write($buffer);
     }
 }
